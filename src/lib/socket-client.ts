@@ -4,8 +4,8 @@ let socket: Socket | null = null;
 
 export const getSocket = () => {
   if (!socket) {
-    // Connect to the separate backend server on port 5000
-    socket = io("http://localhost:5000");
+    // Connect to the backend server using environment variable
+    socket = io(process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000");
   }
   return socket;
 };

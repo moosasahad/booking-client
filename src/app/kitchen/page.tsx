@@ -43,7 +43,7 @@ export default function KitchenPage() {
 
   const fetchOrders = async () => {
     try {
-      const res = await fetch("http://localhost:5000/api/orders");
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/orders`);
       const data = await res.json();
       // Filter out completed orders or show them at the bottom
       setOrders(data);
@@ -60,11 +60,14 @@ export default function KitchenPage() {
     status: OrderStatus,
   ) => {
     try {
-      const res = await fetch(`http://localhost:5000/api/orders/${orderId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status }),
-      });
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/orders/${orderId}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status }),
+        },
+      );
 
       if (res.ok) {
         const socket = getSocket();

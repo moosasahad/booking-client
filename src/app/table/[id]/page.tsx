@@ -41,7 +41,7 @@ export default function TablePage() {
 
   const fetchMenu = async () => {
     try {
-      const res = await fetch("http://localhost:5000/api/menu");
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/menu`);
       const data = await res.json();
       setMenu(data);
       const cats = ["All", ...new Set(data.map((item: any) => item.category))];
@@ -75,7 +75,7 @@ export default function TablePage() {
         totalPrice,
       };
 
-      const res = await fetch("http://localhost:5000/api/orders", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/orders`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(orderData),

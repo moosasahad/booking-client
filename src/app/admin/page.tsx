@@ -57,8 +57,8 @@ export default function AdminPage() {
     setLoading(true);
     try {
       const [menuRes, orderRes] = await Promise.all([
-        fetch("http://localhost:5000/api/menu"),
-        fetch("http://localhost:5000/api/orders"),
+        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/menu`),
+        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/orders`),
       ]);
       setMenu(await menuRes.json());
       setOrders(await orderRes.json());
@@ -73,8 +73,8 @@ export default function AdminPage() {
     e.preventDefault();
     const method = editingItem ? "PUT" : "POST";
     const url = editingItem
-      ? `http://localhost:5000/api/menu/${editingItem._id}`
-      : "http://localhost:5000/api/menu";
+      ? `${process.env.NEXT_PUBLIC_API_URL}/api/menu/${editingItem._id}`
+      : `${process.env.NEXT_PUBLIC_API_URL}/api/menu`;
 
     try {
       const res = await fetch(url, {
@@ -105,9 +105,12 @@ export default function AdminPage() {
   const deleteItem = async (id: string) => {
     if (!confirm("Are you sure?")) return;
     try {
-      const res = await fetch(`http://localhost:5000/api/menu/${id}`, {
-        method: "DELETE",
-      });
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/menu/${id}`,
+        {
+          method: "DELETE",
+        },
+      );
       if (res.ok) {
         toast.success("Item deleted");
         fetchData();
