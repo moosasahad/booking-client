@@ -18,6 +18,7 @@ import {
   LayoutGrid,
   ListOrdered,
   UtensilsCrossed,
+  Minus,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import QRCode from "qrcode";
@@ -40,14 +41,80 @@ export default function AdminPage() {
   });
 
   // Form State
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<any>({
     name: "",
     price: "",
     category: "",
     image: "",
     description: "",
     available: true,
+    options: [],
   });
+
+  // Options editor helpers
+  const addOptionGroup = () => {
+    setFormData((prev: any) => ({
+      ...prev,
+      options: [
+        ...(prev.options || []),
+        { name: "", type: "single", choices: [{ name: "", price: 0 }] },
+      ],
+    }));
+  };
+
+  const removeOptionGroup = (idx: number) => {
+    setFormData((prev: any) => ({
+      ...prev,
+      options: prev.options.filter((_: any, i: number) => i !== idx),
+    }));
+  };
+
+  const updateOptionGroup = (idx: number, field: string, value: any) => {
+    setFormData((prev: any) => {
+      const opts = [...prev.options];
+      opts[idx] = { ...opts[idx], [field]: value };
+      return { ...prev, options: opts };
+    });
+  };
+
+  const addChoice = (optIdx: number) => {
+    setFormData((prev: any) => {
+      const opts = [...prev.options];
+      opts[optIdx] = {
+        ...opts[optIdx],
+        choices: [...opts[optIdx].choices, { name: "", price: 0 }],
+      };
+      return { ...prev, options: opts };
+    });
+  };
+
+  const removeChoice = (optIdx: number, choiceIdx: number) => {
+    setFormData((prev: any) => {
+      const opts = [...prev.options];
+      opts[optIdx] = {
+        ...opts[optIdx],
+        choices: opts[optIdx].choices.filter(
+          (_: any, i: number) => i !== choiceIdx,
+        ),
+      };
+      return { ...prev, options: opts };
+    });
+  };
+
+  const updateChoice = (
+    optIdx: number,
+    choiceIdx: number,
+    field: string,
+    value: any,
+  ) => {
+    setFormData((prev: any) => {
+      const opts = [...prev.options];
+      const choices = [...opts[optIdx].choices];
+      choices[choiceIdx] = { ...choices[choiceIdx], [field]: value };
+      opts[optIdx] = { ...opts[optIdx], choices };
+      return { ...prev, options: opts };
+    });
+  };
 
   useEffect(() => {
     fetchData();
@@ -76,11 +143,24 @@ export default function AdminPage() {
       ? `${process.env.NEXT_PUBLIC_API_URL}/api/menu/${editingItem._id}`
       : `${process.env.NEXT_PUBLIC_API_URL}/api/menu`;
 
+    // Clean options: remove empty groups and choices
+    const cleanedOptions = (formData.options || [])
+      .filter((opt: any) => opt.name && opt.name.trim() !== "")
+      .map((opt: any) => ({
+        ...opt,
+        choices: (opt.choices || []).filter(
+          (c: any) => c.name && c.name.trim() !== "",
+        ),
+      }))
+      .filter((opt: any) => opt.choices.length > 0);
+
+    const payload = { ...formData, options: cleanedOptions };
+
     try {
       const res = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(payload),
       });
 
       if (res.ok) {
@@ -94,6 +174,7 @@ export default function AdminPage() {
           image: "",
           description: "",
           available: true,
+          options: [],
         });
         fetchData();
       }
@@ -136,7 +217,7 @@ export default function AdminPage() {
       {[
         {
           label: "Total Revenue",
-          value: `$${orders.reduce((s, o) => s + o.totalPrice, 0).toFixed(2)}`,
+          value: `₹${orders.reduce((s, o) => s + o.totalPrice, 0).toFixed(2)}`,
           icon: BarChart3,
           color: "text-green-500",
         },
@@ -238,6 +319,7 @@ export default function AdminPage() {
                     image: "",
                     description: "",
                     available: true,
+                    options: [],
                   });
                 }}
                 className="bg-orange-500 hover:bg-orange-600 text-white font-black px-6 py-3 rounded-2xl flex items-center gap-2 transition-all shadow-xl shadow-orange-500/10"
@@ -299,7 +381,7 @@ export default function AdminPage() {
                       </span>
                     </td>
                     <td className="px-8 py-6 font-black text-white">
-                      ${item.price}
+                      ₹{item.price}
                     </td>
                     <td className="px-8 py-6">
                       <div className="flex items-center gap-2">
@@ -316,7 +398,10 @@ export default function AdminPage() {
                         <button
                           onClick={() => {
                             setEditingItem(item);
-                            setFormData(item);
+                            setFormData({
+                              ...item,
+                              options: item.options || [],
+                            });
                             setIsModalOpen(true);
                           }}
                           className="p-2 hover:bg-orange-500/10 text-neutral-500 hover:text-orange-500 rounded-xl transition-all"
@@ -369,7 +454,7 @@ export default function AdminPage() {
                       Table {order.tableNumber}
                     </td>
                     <td className="px-8 py-6 font-black text-orange-500">
-                      ${order.totalPrice.toFixed(2)}
+                      ₹{order.totalPrice.toFixed(2)}
                     </td>
                     <td className="px-8 py-6">
                       <span
@@ -437,7 +522,7 @@ export default function AdminPage() {
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="relative bg-neutral-950 border border-white/10 w-full max-w-xl rounded-[2.5rem] overflow-hidden"
+              className="relative bg-neutral-950 border border-white/10 w-full max-w-2xl rounded-[2.5rem] overflow-hidden max-h-[90vh] overflow-y-auto"
             >
               <div className="p-10">
                 <h3 className="text-3xl font-black mb-8 uppercase tracking-tighter">
@@ -461,7 +546,7 @@ export default function AdminPage() {
                   <div className="grid grid-cols-2 gap-6">
                     <div className="space-y-2">
                       <label className="text-xs font-black uppercase tracking-widest text-neutral-500">
-                        Price ($)
+                        Price (₹)
                       </label>
                       <input
                         type="number"
@@ -492,6 +577,7 @@ export default function AdminPage() {
                         <option value="Main Course">Main Course</option>
                         <option value="Desserts">Desserts</option>
                         <option value="Drinks">Drinks</option>
+                        <option value="Beverages">Beverages</option>
                       </select>
                     </div>
                   </div>
@@ -542,6 +628,132 @@ export default function AdminPage() {
                       Item Available
                     </label>
                   </div>
+
+                  {/* Options Editor */}
+                  <div className="space-y-2 border-t border-white/5 pt-6">
+                    <div className="flex justify-between items-center">
+                      <label className="text-xs font-black uppercase tracking-widest text-neutral-500">
+                        Customization Options
+                      </label>
+                      <button
+                        type="button"
+                        onClick={addOptionGroup}
+                        className="text-xs font-bold text-orange-500 bg-orange-500/10 px-3 py-1.5 rounded-lg hover:bg-orange-500/20 transition-colors flex items-center gap-1"
+                      >
+                        <Plus size={14} /> Add Group
+                      </button>
+                    </div>
+
+                    {(formData.options || []).map(
+                      (opt: any, optIdx: number) => (
+                        <div
+                          key={optIdx}
+                          className="bg-neutral-900 border border-white/5 rounded-2xl p-4 space-y-3"
+                        >
+                          <div className="flex gap-3 items-center">
+                            <input
+                              value={opt.name}
+                              onChange={(e) =>
+                                updateOptionGroup(
+                                  optIdx,
+                                  "name",
+                                  e.target.value,
+                                )
+                              }
+                              className="flex-1 bg-neutral-800 border border-white/5 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-orange-500 transition-colors"
+                              placeholder="Group name (e.g. Sugar Level)"
+                            />
+                            <select
+                              value={opt.type}
+                              onChange={(e) =>
+                                updateOptionGroup(
+                                  optIdx,
+                                  "type",
+                                  e.target.value,
+                                )
+                              }
+                              className="bg-neutral-800 border border-white/5 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-orange-500 transition-colors appearance-none"
+                            >
+                              <option value="single">Single</option>
+                              <option value="multiple">Multiple</option>
+                            </select>
+                            <button
+                              type="button"
+                              onClick={() => removeOptionGroup(optIdx)}
+                              className="p-2 text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+
+                          <div className="space-y-2 pl-2">
+                            {opt.choices.map((choice: any, cIdx: number) => (
+                              <div
+                                key={cIdx}
+                                className="flex gap-2 items-center"
+                              >
+                                <input
+                                  value={choice.name}
+                                  onChange={(e) =>
+                                    updateChoice(
+                                      optIdx,
+                                      cIdx,
+                                      "name",
+                                      e.target.value,
+                                    )
+                                  }
+                                  className="flex-1 bg-neutral-800 border border-white/5 rounded-lg px-3 py-2 text-sm outline-none focus:border-orange-500 transition-colors"
+                                  placeholder="Choice name"
+                                />
+                                <div className="flex items-center gap-1 bg-neutral-800 border border-white/5 rounded-lg px-2">
+                                  <span className="text-neutral-500 text-sm">
+                                    ₹
+                                  </span>
+                                  <input
+                                    type="number"
+                                    step="0.5"
+                                    value={choice.price}
+                                    onChange={(e) =>
+                                      updateChoice(
+                                        optIdx,
+                                        cIdx,
+                                        "price",
+                                        parseFloat(e.target.value) || 0,
+                                      )
+                                    }
+                                    className="w-16 bg-transparent py-2 text-sm outline-none text-right"
+                                    placeholder="0"
+                                  />
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => removeChoice(optIdx, cIdx)}
+                                  className="p-1.5 text-neutral-500 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"
+                                >
+                                  <Minus size={14} />
+                                </button>
+                              </div>
+                            ))}
+                            <button
+                              type="button"
+                              onClick={() => addChoice(optIdx)}
+                              className="text-xs text-neutral-500 hover:text-orange-500 flex items-center gap-1 py-1 transition-colors"
+                            >
+                              <Plus size={12} /> Add choice
+                            </button>
+                          </div>
+                        </div>
+                      ),
+                    )}
+
+                    {(!formData.options || formData.options.length === 0) && (
+                      <p className="text-xs text-neutral-600 text-center py-3">
+                        No options added. Click "Add Group" to create
+                        customizations like Sugar Level, Spice, etc.
+                      </p>
+                    )}
+                  </div>
+
                   <button
                     type="submit"
                     className="w-full bg-orange-500 hover:bg-orange-600 text-white font-black py-5 rounded-2xl shadow-2xl shadow-orange-500/20 transition-all active:scale-95"

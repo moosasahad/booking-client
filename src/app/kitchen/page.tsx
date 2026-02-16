@@ -16,12 +16,21 @@ export default function KitchenPage() {
     const socket = getSocket();
     socket.emit("join-room", "kitchen");
 
-    socket.on("order-update", (newOrder) => {
-      setOrders((prev) => [newOrder, ...prev]);
-      new Audio("/notification.mp3").play().catch(() => {}); // Play sound if user has interacted
-      toast.success(`New Order from Table ${newOrder.tableNumber}`, {
-        icon: "🔔",
-        duration: 5000,
+    socket.on("order-update", (updatedOrder) => {
+      setOrders((prev) => {
+        const exists = prev.find((o) => o._id === updatedOrder._id);
+        if (exists) {
+          return prev.map((o) =>
+            o._id === updatedOrder._id ? updatedOrder : o,
+          );
+        }
+        // Only play sound/toast for truly new orders to avoid spam
+        new Audio("/notification.mp3").play().catch(() => {});
+        toast.success(`New Order from Table ${updatedOrder.tableNumber}`, {
+          icon: "🔔",
+          duration: 5000,
+        });
+        return [updatedOrder, ...prev];
       });
     });
 
@@ -145,30 +154,47 @@ export default function KitchenPage() {
                       })}
                     </span>
                   </div>
+                  {order.paymentMethod && (
+                    <div
+                      className={`mt-2 inline-block px-2 py-0.5 rounded text-xs font-bold uppercase ${order.paymentMethod === "Cash" ? "bg-green-500/20 text-green-500" : "bg-blue-500/20 text-blue-500"}`}
+                    >
+                      {order.paymentMethod}
+                    </div>
+                  )}
                 </div>
-                <div
-                  className={`px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest ${
-                    order.status === OrderStatus.PENDING
-                      ? "bg-orange-500/20 text-orange-500"
-                      : order.status === OrderStatus.COOKING
-                        ? "bg-yellow-500/20 text-yellow-500"
-                        : order.status === OrderStatus.PLATING
-                          ? "bg-blue-500/20 text-blue-500"
-                          : order.status === OrderStatus.SERVING
-                            ? "bg-purple-500/20 text-purple-500"
-                            : "bg-green-500/20 text-green-500"
-                  }`}
-                >
-                  {order.status}
+                <div className="flex flex-col items-end gap-2">
+                  <div
+                    className={`px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest ${
+                      order.status === OrderStatus.PENDING
+                        ? "bg-orange-500/20 text-orange-500"
+                        : order.status === OrderStatus.COOKING
+                          ? "bg-yellow-500/20 text-yellow-500"
+                          : order.status === OrderStatus.PLATING
+                            ? "bg-blue-500/20 text-blue-500"
+                            : order.status === OrderStatus.SERVING
+                              ? "bg-purple-500/20 text-purple-500"
+                              : order.status === OrderStatus.CANCELLED
+                                ? "bg-red-500/20 text-red-500"
+                                : "bg-green-500/20 text-green-500"
+                    }`}
+                  >
+                    {order.status}
+                  </div>
                 </div>
               </div>
 
+              {order.note && (
+                <div className="mb-6 bg-yellow-500/10 border border-yellow-500/20 p-3 rounded-xl">
+                  <h4 className="text-yellow-500 text-xs font-bold uppercase mb-1">
+                    Note
+                  </h4>
+                  <p className="text-sm text-yellow-200">{order.note}</p>
+                </div>
+              )}
+
               <div className="flex-1 space-y-4 mb-8">
                 {order.items.map((item: any, idx: number) => (
-                  <div
-                    key={idx}
-                    className="flex justify-between items-center group"
-                  >
+                  <div key={idx} className="flex flex-col gap-1 group">
                     <div className="flex items-center gap-4">
                       <div className="w-10 h-10 bg-neutral-800 rounded-xl flex items-center justify-center font-black text-white group-hover:bg-orange-500 transition-colors">
                         {item.quantity}
@@ -177,6 +203,22 @@ export default function KitchenPage() {
                         {item.name}
                       </span>
                     </div>
+                    {item.selectedOptions &&
+                      item.selectedOptions.length > 0 && (
+                        <div className="pl-14">
+                          {item.selectedOptions.map(
+                            (opt: any, oIdx: number) => (
+                              <div
+                                key={oIdx}
+                                className="text-xs text-neutral-500 flex items-center gap-1"
+                              >
+                                <span className="w-1 h-1 bg-neutral-600 rounded-full" />
+                                <span>{opt.choice}</span>
+                              </div>
+                            ),
+                          )}
+                        </div>
+                      )}
                   </div>
                 ))}
               </div>

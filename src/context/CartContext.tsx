@@ -8,14 +8,25 @@ interface CartItem extends Partial<IMenuItem> {
   name: string;
   price: number;
   quantity: number;
+  status?: string; // Add this just in case
+  selectedOptions?: {
+    name: string;
+    choice: string;
+    price: number;
+  }[];
 }
 
 interface CartContextType {
   cart: CartItem[];
-  addToCart: (item: any) => void;
-  removeFromCart: (id: string) => void;
-  updateQuantity: (id: string, delta: number) => void;
+  addToCart: (
+    item: IMenuItem,
+    quantity?: number,
+    selectedOptions?: any[],
+  ) => void;
+  removeFromCart: (cartItemId: string) => void;
+  updateQuantity: (cartItemId: string, delta: number) => void;
   clearCart: () => void;
+  loadCart: (items: CartItem[]) => void;
   totalPrice: number;
 }
 
@@ -37,27 +48,67 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({
     localStorage.setItem("cart", JSON.stringify(cart));
   }, [cart]);
 
-  const addToCart = (item: any) => {
+  // Helper to generate a unique ID for cart items based on options
+  const generateCartItemId = (itemId: string, options: any[]) => {
+    if (!options || options.length === 0) return itemId;
+    const optionsString = JSON.stringify(
+      options.sort((a, b) => a.name.localeCompare(b.name)),
+    );
+    return `${itemId}-${optionsString}`;
+  };
+
+  const addToCartWithId = (
+    item: IMenuItem,
+    quantity = 1,
+    selectedOptions: any[] = [],
+  ) => {
     setCart((prev) => {
-      const existing = prev.find((i) => i._id === item._id);
+      // Calculate price including options
+      const optionsTotal = selectedOptions.reduce(
+        (acc, opt) => acc + opt.price,
+        0,
+      );
+      const finalPrice = item.price + optionsTotal;
+
+      // Check if exact same item exists
+      const existing = prev.find(
+        (i: any) =>
+          i._id === item._id &&
+          JSON.stringify(i.selectedOptions) === JSON.stringify(selectedOptions),
+      );
+
       if (existing) {
-        return prev.map((i) =>
-          i._id === item._id ? { ...i, quantity: i.quantity + 1 } : i,
+        return prev.map((i: any) =>
+          i._id === item._id &&
+          JSON.stringify(i.selectedOptions) === JSON.stringify(selectedOptions)
+            ? { ...i, quantity: i.quantity + quantity }
+            : i,
         );
       }
-      return [...prev, { ...item, quantity: 1 }];
+
+      return [
+        ...prev,
+        {
+          ...item,
+          _id: item._id, // Keep original ID for reference
+          price: finalPrice, // Store the calculated unit price
+          quantity,
+          selectedOptions,
+          cartId: Math.random().toString(36).substr(2, 9), // Simple unique ID
+        },
+      ];
     });
   };
 
-  const removeFromCart = (id: string) => {
-    setCart((prev) => prev.filter((i) => i._id !== id));
+  const removeFromCartWithId = (cartId: string) => {
+    setCart((prev) => prev.filter((i: any) => i.cartId !== cartId));
   };
 
-  const updateQuantity = (id: string, delta: number) => {
+  const updateQuantityWithId = (cartId: string, delta: number) => {
     setCart((prev) =>
       prev
-        .map((i) => {
-          if (i._id === id) {
+        .map((i: any) => {
+          if (i.cartId === cartId) {
             const newQty = Math.max(0, i.quantity + delta);
             return { ...i, quantity: newQty };
           }
@@ -67,7 +118,9 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({
     );
   };
 
-  const clearCart = () => setCart([]);
+  const loadCart = (items: CartItem[]) => {
+    setCart(items);
+  };
 
   const totalPrice = cart.reduce(
     (sum, item) => sum + item.price * item.quantity,
@@ -78,10 +131,11 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({
     <CartContext.Provider
       value={{
         cart,
-        addToCart,
-        removeFromCart,
-        updateQuantity,
-        clearCart,
+        addToCart: addToCartWithId,
+        removeFromCart: removeFromCartWithId,
+        updateQuantity: updateQuantityWithId,
+        clearCart: () => setCart([]),
+        loadCart,
         totalPrice,
       }}
     >
