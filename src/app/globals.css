@@ -21,10 +21,21 @@ body {
 }
 
 .food-card-hover {
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  transition:
+    transform 0.3s ease,
+    box-shadow 0.3s ease;
 }
 
 .food-card-hover:hover {
   transform: translateY(-5px);
   box-shadow: 0 10px 25px -5px rgba(249, 115, 22, 0.3);
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }

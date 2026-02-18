@@ -20,6 +20,8 @@ import {
   Wallet,
   CheckCircle,
   Ban,
+  Trash2,
+  Edit2,
 } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import toast from "react-hot-toast";
@@ -37,6 +39,7 @@ export default function TablePage() {
     totalPrice,
     clearCart,
     loadCart,
+    updateOptions,
   } = useCart();
   const [menu, setMenu] = useState<IMenuItem[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
@@ -52,6 +55,7 @@ export default function TablePage() {
   const [orderNote, setOrderNote] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<"Cash" | "Online">("Cash");
   const [modifyingOrderId, setModifyingOrderId] = useState<string | null>(null);
+  const [editingCartId, setEditingCartId] = useState<string | null>(null);
 
   // Order Detail Modal
   const [isOrderDetailOpen, setIsOrderDetailOpen] = useState(false);
@@ -148,10 +152,19 @@ export default function TablePage() {
 
   const confirmAddToCart = () => {
     if (selectedItem) {
-      // Validate required options if any (assuming all single options are required for now, or just logic)
-      // For now, simple add
-      addToCart(selectedItem, 1, selectedOptions);
-      toast.success(`Added ${selectedItem.name} to cart`);
+      if (editingCartId && updateOptions) {
+        const optionsTotal = selectedOptions.reduce(
+          (acc, opt) => acc + opt.price,
+          0,
+        );
+        const finalPrice = selectedItem.price + optionsTotal;
+        updateOptions(editingCartId, selectedOptions, finalPrice);
+        toast.success("Options updated");
+        setEditingCartId(null);
+      } else {
+        addToCart(selectedItem, 1, selectedOptions);
+        toast.success(`Added ${selectedItem.name} to cart`);
+      }
       setIsOptionsOpen(false);
       setSelectedItem(null);
       setSelectedOptions([]);
@@ -160,12 +173,45 @@ export default function TablePage() {
 
   const handleOptionSelect = (optionName: string, choice: any) => {
     setSelectedOptions((prev) => {
-      const existing = prev.filter((o) => o.name !== optionName);
-      return [
-        ...existing,
-        { name: optionName, choice: choice.name, price: choice.price },
-      ];
+      const optionGroup = selectedItem?.options?.find(
+        (o) => o.name === optionName,
+      );
+      const isMultiple = optionGroup?.type === "multiple";
+
+      if (isMultiple) {
+        const isSelected = prev.some(
+          (o) => o.name === optionName && o.choice === choice.name,
+        );
+        if (isSelected) {
+          return prev.filter(
+            (o) => !(o.name === optionName && o.choice === choice.name),
+          );
+        } else {
+          return [
+            ...prev,
+            { name: optionName, choice: choice.name, price: choice.price },
+          ];
+        }
+      } else {
+        const existing = prev.filter((o) => o.name !== optionName);
+        return [
+          ...existing,
+          { name: optionName, choice: choice.name, price: choice.price },
+        ];
+      }
     });
+  };
+
+  const handleEditCartItemOptions = (item: any) => {
+    const menuItem = menu.find(
+      (m) => m._id === item._id || m.name === item.name,
+    );
+    if (menuItem) {
+      setSelectedItem(menuItem);
+      setSelectedOptions(item.selectedOptions || []);
+      setEditingCartId(item.cartId);
+      setIsOptionsOpen(true);
+    }
   };
 
   const handleEditOrder = (order: any) => {
@@ -218,6 +264,56 @@ export default function TablePage() {
       }
     } catch (error) {
       toast.error("Error cancelling order");
+    }
+  };
+
+  const handleRemoveSingleItem = async (orderId: string, itemIndex: number) => {
+    if (!recentOrder || recentOrder.status !== "Pending") return;
+    if (!confirm("Remove this item from your order?")) return;
+
+    const updatedItems = [...recentOrder.items];
+    updatedItems.splice(itemIndex, 1);
+
+    if (updatedItems.length === 0) {
+      await cancelOrder();
+      return;
+    }
+
+    const newTotalPrice = updatedItems.reduce(
+      (acc, item) => acc + item.price * item.quantity,
+      0,
+    );
+
+    try {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/orders/${orderId}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            items: updatedItems,
+            totalPrice: newTotalPrice,
+          }),
+        },
+      );
+
+      if (res.ok) {
+        const updatedOrder = await res.json();
+        setRecentOrder(updatedOrder);
+        toast.success("Item removed from order");
+
+        const socket = getSocket();
+        socket.emit("update-status", {
+          orderId: updatedOrder._id,
+          tableNumber: tableId,
+          status: updatedOrder.status,
+        });
+      } else {
+        const err = await res.json();
+        toast.error(err.error || "Failed to update order");
+      }
+    } catch (error) {
+      toast.error("Error updating order");
     }
   };
 
@@ -462,7 +558,7 @@ export default function TablePage() {
                 </div>
               </div>
 
-              <div className="p-6 max-h-[50vh] overflow-y-auto">
+              <div className="p-6 max-h-[50vh] overflow-y-auto no-scrollbar">
                 {selectedItem.options?.map((option, idx) => (
                   <div key={idx} className="mb-6">
                     <h4 className="font-bold text-lg mb-3 flex justify-between">
@@ -564,7 +660,7 @@ export default function TablePage() {
               animate={{ y: 0 }}
               exit={{ y: "100%" }}
               transition={{ type: "spring", damping: 25, stiffness: 200 }}
-              className="fixed bottom-0 left-0 right-0 max-w-2xl mx-auto bg-neutral-900 rounded-t-[3rem] p-8 z-50 border-t border-white/5"
+              className="fixed bottom-0 left-0 right-0 max-w-2xl mx-auto bg-neutral-900 rounded-t-[3rem] p-8 z-50 border-t border-white/5 max-h-[85vh] overflow-y-auto no-scrollbar"
             >
               <div className="w-12 h-1.5 bg-neutral-800 rounded-full mx-auto mb-8" />
               <div className="flex justify-between items-center mb-6">
@@ -589,7 +685,15 @@ export default function TablePage() {
                         className="w-16 h-16 rounded-xl object-cover"
                       />
                       <div className="flex-1">
-                        <h4 className="font-bold">{item.name}</h4>
+                        <div className="flex justify-between items-start">
+                          <h4 className="font-bold">{item.name}</h4>
+                          <button
+                            onClick={() => handleEditCartItemOptions(item)}
+                            className="flex items-center gap-1 text-[10px] bg-orange-500/20 text-orange-400 border border-orange-500/30 px-2.5 py-1.5 rounded-lg hover:bg-orange-500/30 transition-all font-bold"
+                          >
+                            <Edit2 size={10} /> Edit Options
+                          </button>
+                        </div>
                         <p className="text-orange-500 font-bold">
                           ₹{(item.price * item.quantity).toFixed(2)}
                         </p>
@@ -709,7 +813,7 @@ export default function TablePage() {
               animate={{ y: 0 }}
               exit={{ y: "100%" }}
               transition={{ type: "spring", damping: 30, stiffness: 300 }}
-              className="fixed inset-x-0 bottom-0 z-60 bg-neutral-900 rounded-t-3xl max-h-[85vh] overflow-y-auto border-t border-white/10"
+              className="fixed inset-x-0 bottom-0 z-60 bg-neutral-900 rounded-t-3xl max-h-[85vh] overflow-y-auto border-t border-white/10 no-scrollbar"
             >
               <div className="p-6">
                 <div className="w-12 h-1 bg-neutral-700 rounded-full mx-auto mb-6" />
@@ -734,12 +838,22 @@ export default function TablePage() {
                     >
                       {recentOrder.status}
                     </span>
-                    <button
-                      onClick={() => setIsOrderDetailOpen(false)}
-                      className="p-1"
-                    >
-                      <X size={20} className="text-neutral-500" />
-                    </button>
+                    <div className="flex items-center gap-2">
+                      {recentOrder.status === "Pending" && (
+                        <button
+                          onClick={() => handleEditOrder(recentOrder)}
+                          className="flex items-center gap-1.5 bg-orange-500/10 hover:bg-orange-500/20 text-orange-500 px-3 py-1.5 rounded-full text-[10px] font-bold uppercase transition-colors"
+                        >
+                          <Edit2 size={12} /> Edit
+                        </button>
+                      )}
+                      <button
+                        onClick={() => setIsOrderDetailOpen(false)}
+                        className="p-1"
+                      >
+                        <X size={20} className="text-neutral-500" />
+                      </button>
+                    </div>
                   </div>
                 </div>
 
@@ -751,9 +865,22 @@ export default function TablePage() {
                         <span className="font-medium">
                           {item.quantity}× {item.name}
                         </span>
-                        <span className="text-orange-500 font-bold">
-                          ₹{(item.price * item.quantity).toFixed(2)}
-                        </span>
+                        <div className="flex items-center gap-3">
+                          <span className="text-orange-500 font-bold">
+                            ₹{(item.price * item.quantity).toFixed(2)}
+                          </span>
+                          {recentOrder.status === "Pending" && (
+                            <button
+                              onClick={() =>
+                                handleRemoveSingleItem(recentOrder._id, idx)
+                              }
+                              className="p-1.5 text-neutral-500 hover:text-red-500 transition-colors"
+                              title="Remove item"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          )}
+                        </div>
                       </div>
                       {item.selectedOptions &&
                         item.selectedOptions.length > 0 && (
@@ -810,9 +937,9 @@ export default function TablePage() {
                         setIsOrderDetailOpen(false);
                         cancelOrder();
                       }}
-                      className="bg-red-500/10 hover:bg-red-500/20 text-red-500 font-bold py-3 rounded-xl transition-colors flex items-center justify-center gap-2"
+                      className="bg-red-500/20 hover:bg-red-500/30 text-red-500 border border-red-500/30 font-bold py-4 rounded-2xl transition-all flex items-center justify-center gap-2 active:scale-[0.98] shadow-lg shadow-red-500/10"
                     >
-                      <Ban size={16} /> Cancel
+                      <Ban size={18} /> Cancel Order
                     </button>
                   </div>
                 )}

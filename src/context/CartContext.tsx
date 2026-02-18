@@ -25,6 +25,7 @@ interface CartContextType {
   ) => void;
   removeFromCart: (cartItemId: string) => void;
   updateQuantity: (cartItemId: string, delta: number) => void;
+  updateOptions: (cartItemId: string, options: any[], newPrice: number) => void;
   clearCart: () => void;
   loadCart: (items: CartItem[]) => void;
   totalPrice: number;
@@ -118,6 +119,18 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({
     );
   };
 
+  const updateOptionsWithId = (
+    cartId: string,
+    selectedOptions: any[],
+    newPrice: number,
+  ) => {
+    setCart((prev) =>
+      prev.map((i: any) =>
+        i.cartId === cartId ? { ...i, selectedOptions, price: newPrice } : i,
+      ),
+    );
+  };
+
   const loadCart = (items: CartItem[]) => {
     setCart(items);
   };
@@ -134,6 +147,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({
         addToCart: addToCartWithId,
         removeFromCart: removeFromCartWithId,
         updateQuantity: updateQuantityWithId,
+        updateOptions: updateOptionsWithId,
         clearCart: () => setCart([]),
         loadCart,
         totalPrice,
