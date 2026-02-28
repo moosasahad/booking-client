@@ -10,7 +10,7 @@ export async function GET() {
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
-}
+};
 
 export async function POST(req: Request) {
   try {
