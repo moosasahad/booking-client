@@ -22,6 +22,10 @@ import {
   Ban,
   Trash2,
   Edit2,
+  Bell,
+  HandMetal,
+  ShieldAlert,
+  Loader2,
 } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import toast from "react-hot-toast";
@@ -72,7 +76,12 @@ export default function TablePage() {
   });
   const [paymentProcessing, setPaymentProcessing] = useState(false);
 
+  // Table reservation status
+  const [tableStatus, setTableStatus] = useState<string>("loading");
+  const [waiterCalling, setWaiterCalling] = useState(false);
+
   useEffect(() => {
+    fetchTableStatus();
     fetchMenu();
     fetchActiveOrder();
 
@@ -89,10 +98,46 @@ export default function TablePage() {
       toast.success(`Order status updated to: ${data.status}`);
     });
 
+    socket.on("table-status-changed", (data: any) => {
+      if (data.tableNumber === tableId) {
+        setTableStatus(data.status);
+        if (data.status === "Available") {
+          toast.success("Table is now available! You can browse the menu.", { duration: 4000 });
+        }
+      }
+    });
+
     return () => {
       socket.off("status-changed");
+      socket.off("table-status-changed");
     };
   }, [tableId]);
+
+  const fetchTableStatus = async () => {
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/tables/${tableId}`);
+      if (res.ok) {
+        const data = await res.json();
+        setTableStatus(data.status);
+      } else {
+        setTableStatus("Available");
+      }
+    } catch (error) {
+      setTableStatus("Available");
+    }
+  };
+
+  const callWaiter = () => {
+    setWaiterCalling(true);
+    const socket = getSocket();
+    socket.emit("call-waiter", { tableNumber: tableId });
+    toast.success("Waiter has been notified! Please wait.", {
+      icon: "🔔",
+      duration: 4000,
+    });
+    // Reset button after 5 seconds so they can call again
+    setTimeout(() => setWaiterCalling(false), 5000);
+  };
 
   const fetchMenu = async () => {
     try {
@@ -416,10 +461,99 @@ export default function TablePage() {
     await submitOrder();
   };
 
-  if (loading) {
+  if (loading || tableStatus === "loading") {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#0a0a0a]">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-orange-500"></div>
+        <div className="flex flex-col items-center gap-4">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-orange-500"></div>
+          <p className="text-neutral-400 animate-pulse">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // TABLE RESERVED GATE
+  if (tableStatus === "Reserved" || tableStatus === "Occupied") {
+    return (
+      <div className="min-h-screen bg-[#050505] flex flex-col items-center justify-center p-6 font-outfit relative overflow-hidden">
+        {/* Background glow */}
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute top-[-20%] left-[-20%] w-[60%] h-[60%] bg-red-500/8 blur-[150px] rounded-full" />
+          <div className="absolute bottom-[-20%] right-[-20%] w-[60%] h-[60%] bg-orange-500/8 blur-[150px] rounded-full" />
+        </div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          className="z-10 max-w-md w-full text-center"
+        >
+          {/* Icon */}
+          <motion.div
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
+            className="w-24 h-24 bg-red-500/10 border border-red-500/20 rounded-full flex items-center justify-center mx-auto mb-8"
+          >
+            <ShieldAlert className="text-red-500" size={48} />
+          </motion.div>
+
+          {/* Status Badge */}
+          <div className="inline-block bg-red-500/20 text-red-500 border border-red-500/30 px-6 py-2 rounded-full font-black text-sm uppercase tracking-widest mb-6">
+            Table {tableStatus}
+          </div>
+
+          <h1 className="text-4xl md:text-5xl font-black text-white mb-4 tracking-tight">
+            Table #{tableId as string}
+          </h1>
+          <p className="text-neutral-400 text-lg mb-3">
+            This table is currently <span className="text-red-400 font-bold">{tableStatus.toLowerCase()}</span>.
+          </p>
+          <p className="text-neutral-500 text-base mb-12">
+            Please call a waiter for assistance or to be seated at another table.
+          </p>
+
+          {/* Call Waiter Button */}
+          <motion.button
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.97 }}
+            onClick={callWaiter}
+            disabled={waiterCalling}
+            className={`w-full py-5 rounded-2xl font-black text-lg flex items-center justify-center gap-3 transition-all shadow-2xl ${waiterCalling
+                ? "bg-green-500/20 text-green-400 border border-green-500/30 shadow-green-500/10"
+                : "bg-gradient-to-r from-orange-500 to-red-500 text-white shadow-orange-500/30 hover:shadow-orange-500/50"
+              }`}
+          >
+            {waiterCalling ? (
+              <>
+                <CheckCircle size={24} />
+                WAITER NOTIFIED!
+              </>
+            ) : (
+              <>
+                <Bell size={24} />
+                CALL WAITER
+              </>
+            )}
+          </motion.button>
+
+          {waiterCalling && (
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="text-green-400/70 text-sm mt-4"
+            >
+              A waiter will be with you shortly. Please wait.
+            </motion.p>
+          )}
+
+          {/* Info card */}
+          <div className="mt-12 bg-neutral-900/50 border border-white/5 rounded-2xl p-5 text-left">
+            <p className="text-neutral-400 text-sm">
+              <span className="text-orange-500 font-bold">💡 Tip:</span> Once the waiter assigns you to an available table, you&apos;ll be able to browse the menu and place orders.
+            </p>
+          </div>
+        </motion.div>
       </div>
     );
   }
@@ -468,11 +602,10 @@ export default function TablePage() {
           <button
             key={cat}
             onClick={() => setActiveCategory(cat)}
-            className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
-              activeCategory === cat
+            className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${activeCategory === cat
                 ? "bg-orange-500 text-white shadow-lg shadow-orange-500/20"
                 : "bg-neutral-900 text-neutral-400 hover:bg-neutral-800"
-            }`}
+              }`}
           >
             {cat}
           </button>
@@ -581,11 +714,10 @@ export default function TablePage() {
                             onClick={() =>
                               handleOptionSelect(option.name, choice)
                             }
-                            className={`p-3 rounded-xl border flex justify-between items-center cursor-pointer transition-all ${
-                              isSelected
+                            className={`p-3 rounded-xl border flex justify-between items-center cursor-pointer transition-all ${isSelected
                                 ? "bg-orange-500/20 border-orange-500 text-orange-500"
                                 : "bg-neutral-800 border-transparent hover:bg-neutral-800/80"
-                            }`}
+                              }`}
                           >
                             <div className="flex items-center gap-3">
                               <div
@@ -826,15 +958,14 @@ export default function TablePage() {
                   </div>
                   <div className="flex items-center gap-2">
                     <span
-                      className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${
-                        recentOrder.status === "Pending"
+                      className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${recentOrder.status === "Pending"
                           ? "bg-orange-500/20 text-orange-500"
                           : recentOrder.status === "Cooking"
                             ? "bg-yellow-500/20 text-yellow-500"
                             : recentOrder.status === "Cancelled"
                               ? "bg-red-500/20 text-red-500"
                               : "bg-green-500/20 text-green-500"
-                      }`}
+                        }`}
                     >
                       {recentOrder.status}
                     </span>
@@ -947,15 +1078,15 @@ export default function TablePage() {
                 {(recentOrder.status === "Cooking" ||
                   recentOrder.status === "Plating" ||
                   recentOrder.status === "Serving") && (
-                  <div className="bg-yellow-500/10 border border-yellow-500/20 p-4 rounded-xl text-center">
-                    <p className="text-yellow-500 font-bold text-sm">
-                      Your order is being prepared ✨
-                    </p>
-                    <p className="text-yellow-500/60 text-xs mt-1">
-                      Cannot modify order once cooking has started
-                    </p>
-                  </div>
-                )}
+                    <div className="bg-yellow-500/10 border border-yellow-500/20 p-4 rounded-xl text-center">
+                      <p className="text-yellow-500 font-bold text-sm">
+                        Your order is being prepared ✨
+                      </p>
+                      <p className="text-yellow-500/60 text-xs mt-1">
+                        Cannot modify order once cooking has started
+                      </p>
+                    </div>
+                  )}
 
                 {recentOrder.status === "Completed" && (
                   <div className="bg-green-500/10 border border-green-500/20 p-4 rounded-xl text-center">
@@ -1017,21 +1148,19 @@ export default function TablePage() {
                 <div className="flex gap-2 mb-6 bg-neutral-800 rounded-xl p-1">
                   <button
                     onClick={() => setPaymentTab("qr")}
-                    className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-all ${
-                      paymentTab === "qr"
+                    className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-all ${paymentTab === "qr"
                         ? "bg-orange-500 text-white"
                         : "text-neutral-400"
-                    }`}
+                      }`}
                   >
                     <QrCode size={16} /> UPI / QR
                   </button>
                   <button
                     onClick={() => setPaymentTab("card")}
-                    className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-all ${
-                      paymentTab === "card"
+                    className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-all ${paymentTab === "card"
                         ? "bg-orange-500 text-white"
                         : "text-neutral-400"
-                    }`}
+                      }`}
                   >
                     <CreditCard size={16} /> Card
                   </button>
@@ -1197,6 +1326,28 @@ export default function TablePage() {
           </>
         )}
       </AnimatePresence>
+
+      {/* Floating Call Waiter Button */}
+      {!isCartOpen && !isPaymentOpen && !isOptionsOpen && !isOrderDetailOpen && (
+        <motion.button
+          initial={{ opacity: 0, scale: 0 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.5 }}
+          onClick={callWaiter}
+          disabled={waiterCalling}
+          className={`fixed bottom-6 right-6 z-40 p-4 rounded-full shadow-2xl transition-all ${waiterCalling
+              ? "bg-green-500 shadow-green-500/40 text-white"
+              : "bg-red-500 hover:bg-red-600 shadow-red-500/40 text-white hover:scale-110"
+            }`}
+          title="Call Waiter"
+        >
+          {waiterCalling ? (
+            <CheckCircle size={24} />
+          ) : (
+            <Bell size={24} />
+          )}
+        </motion.button>
+      )}
     </div>
   );
 }
