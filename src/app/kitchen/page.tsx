@@ -26,7 +26,9 @@ export default function KitchenPage() {
   const [loading, setLoading] = useState(true);
   const [soundEnabled, setSoundEnabled] = useState(false);
   const [newOrderIds, setNewOrderIds] = useState<Set<string>>(new Set());
-  const [waiterCalls, setWaiterCalls] = useState<{ tableNumber: string; timestamp: string }[]>([]);
+  const [waiterCalls, setWaiterCalls] = useState<
+    { tableNumber: string; timestamp: string }[]
+  >([]);
   const [tables, setTables] = useState<any[]>([]);
 
   // Reservation Modal State
@@ -49,7 +51,7 @@ export default function KitchenPage() {
     if (!soundEnabled || !audioRef.current) return;
     const audio = audioRef.current;
     audio.currentTime = 0;
-    audio.play().catch(() => { });
+    audio.play().catch(() => {});
   }, [soundEnabled]);
 
   // Enable sound (must be triggered by user interaction to satisfy browser autoplay policy)
@@ -101,7 +103,7 @@ export default function KitchenPage() {
             duration: 4000,
           });
           return prev.map((o) =>
-            o._id === updatedOrder._id ? updatedOrder : o
+            o._id === updatedOrder._id ? updatedOrder : o,
           );
         }
         // Truly new order
@@ -121,8 +123,8 @@ export default function KitchenPage() {
         prev.map((order) =>
           order._id === data.orderId
             ? { ...order, status: data.status }
-            : order
-        )
+            : order,
+        ),
       );
       // Auto-dismiss from new orders when status changes from Pending
       if (data.status !== "Pending") {
@@ -130,12 +132,12 @@ export default function KitchenPage() {
       }
     });
 
-    socket.on("waiter-call", (data: { tableNumber: string; timestamp: string }) => {
-      playNotificationSound();
-      setWaiterCalls((prev) => [data, ...prev]);
-      toast(
-        `Table ${data.tableNumber} is calling the waiter!`,
-        {
+    socket.on(
+      "waiter-call",
+      (data: { tableNumber: string; timestamp: string }) => {
+        playNotificationSound();
+        setWaiterCalls((prev) => [data, ...prev]);
+        toast(`Table ${data.tableNumber} is calling the waiter!`, {
           icon: "🖐️",
           duration: 8000,
           style: {
@@ -144,24 +146,32 @@ export default function KitchenPage() {
             border: "1px solid #ef4444",
             fontWeight: "bold",
           },
-        }
-      );
-    });
+        });
+      },
+    );
 
-    socket.on("table-status-changed", (data: {
-      tableNumber: string;
-      status: string;
-      reservedByName?: string;
-      reservedByPhone?: string;
-    }) => {
-      setTables((prev) =>
-        prev.map((t) =>
-          t.tableNumber === data.tableNumber
-            ? { ...t, status: data.status, reservedByName: data.reservedByName, reservedByPhone: data.reservedByPhone }
-            : t
-        )
-      );
-    });
+    socket.on(
+      "table-status-changed",
+      (data: {
+        tableNumber: string;
+        status: string;
+        reservedByName?: string;
+        reservedByPhone?: string;
+      }) => {
+        setTables((prev) =>
+          prev.map((t) =>
+            t.tableNumber === data.tableNumber
+              ? {
+                  ...t,
+                  status: data.status,
+                  reservedByName: data.reservedByName,
+                  reservedByPhone: data.reservedByPhone,
+                }
+              : t,
+          ),
+        );
+      },
+    );
 
     return () => {
       socket.off("order-update");
@@ -199,7 +209,12 @@ export default function KitchenPage() {
     fetchTables();
   }, []);
 
-  const updateTableStatus = async (tableNumber: string, newStatus: string, name?: string, phone?: string) => {
+  const updateTableStatus = async (
+    tableNumber: string,
+    newStatus: string,
+    name?: string,
+    phone?: string,
+  ) => {
     try {
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/api/tables/${tableNumber}`,
@@ -209,14 +224,16 @@ export default function KitchenPage() {
           body: JSON.stringify({
             status: newStatus,
             reservedByName: name || null,
-            reservedByPhone: phone || null
+            reservedByPhone: phone || null,
           }),
-        }
+        },
       );
       if (res.ok) {
         toast.success(`Table ${tableNumber} → ${newStatus}`);
         // Dismiss waiter call for this table
-        setWaiterCalls((prev) => prev.filter((c) => c.tableNumber !== tableNumber));
+        setWaiterCalls((prev) =>
+          prev.filter((c) => c.tableNumber !== tableNumber),
+        );
         return true;
       }
       return false;
@@ -235,7 +252,12 @@ export default function KitchenPage() {
 
   const submitReservation = async () => {
     if (!resTableNumber) return;
-    const success = await updateTableStatus(resTableNumber, "Reserved", guestName, guestPhone);
+    const success = await updateTableStatus(
+      resTableNumber,
+      "Reserved",
+      guestName,
+      guestPhone,
+    );
     if (success) {
       setIsResModalOpen(false);
     }
@@ -248,7 +270,7 @@ export default function KitchenPage() {
   const updateStatus = async (
     orderId: string,
     tableNumber: string,
-    status: OrderStatus
+    status: OrderStatus,
   ) => {
     try {
       const res = await fetch(
@@ -257,7 +279,7 @@ export default function KitchenPage() {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ status }),
-        }
+        },
       );
 
       if (res.ok) {
@@ -273,7 +295,8 @@ export default function KitchenPage() {
   };
 
   const pendingCount = orders.filter(
-    (o) => o.status !== OrderStatus.COMPLETED && o.status !== OrderStatus.CANCELLED
+    (o) =>
+      o.status !== OrderStatus.COMPLETED && o.status !== OrderStatus.CANCELLED,
   ).length;
 
   if (loading) {
@@ -319,9 +342,7 @@ export default function KitchenPage() {
             <ChefHat className="text-orange-500" size={36} />
             KITCHEN DASHBOARD
           </h1>
-          <p className="text-neutral-500">
-            Real-time Order Management Station
-          </p>
+          <p className="text-neutral-500">Real-time Order Management Station</p>
         </div>
         <div className="flex items-center gap-4">
           {/* Sound Toggle */}
@@ -337,10 +358,11 @@ export default function KitchenPage() {
                 });
               }
             }}
-            className={`p-3 rounded-2xl border transition-all ${soundEnabled
-              ? "bg-green-500/10 border-green-500/30 text-green-500 hover:bg-green-500/20"
-              : "bg-neutral-900 border-white/5 text-neutral-500 hover:text-white"
-              }`}
+            className={`p-3 rounded-2xl border transition-all ${
+              soundEnabled
+                ? "bg-green-500/10 border-green-500/30 text-green-500 hover:bg-green-500/20"
+                : "bg-neutral-900 border-white/5 text-neutral-500 hover:text-white"
+            }`}
             title={soundEnabled ? "Disable sound" : "Enable sound"}
           >
             {soundEnabled ? <Volume2 size={20} /> : <VolumeX size={20} />}
@@ -349,8 +371,9 @@ export default function KitchenPage() {
           {/* Notification Bell with Badge */}
           <div className="relative">
             <div
-              className={`bg-neutral-900 p-3 rounded-2xl border border-white/5 ${newOrderIds.size > 0 ? "animate-pulse" : ""
-                }`}
+              className={`bg-neutral-900 p-3 rounded-2xl border border-white/5 ${
+                newOrderIds.size > 0 ? "animate-pulse" : ""
+              }`}
             >
               {newOrderIds.size > 0 ? (
                 <BellRing className="text-orange-500" size={20} />
@@ -441,13 +464,18 @@ export default function KitchenPage() {
                         TABLE {call.tableNumber} — CALLING WAITER
                       </p>
                       <p className="text-neutral-500 text-xs">
-                        {new Date(call.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                        {new Date(call.timestamp).toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
                       </p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
                     <button
-                      onClick={() => updateTableStatus(call.tableNumber, "Occupied")}
+                      onClick={() =>
+                        updateTableStatus(call.tableNumber, "Occupied")
+                      }
                       className="bg-red-500 hover:bg-red-600 text-white text-xs font-black px-4 py-2 rounded-xl transition-colors"
                     >
                       MARK OCCUPIED
@@ -477,48 +505,59 @@ export default function KitchenPage() {
             {tables.map((table) => (
               <div
                 key={table._id}
-                className={`flex-shrink-0 bg-neutral-900 border rounded-2xl p-4 min-w-[160px] ${table.status === "Available"
-                  ? "border-green-500/30"
-                  : table.status === "Reserved"
-                    ? "border-red-500/30"
-                    : "border-yellow-500/30"
-                  }`}
+                className={`flex-shrink-0 bg-neutral-900 border rounded-2xl p-4 min-w-[160px] ${
+                  table.status === "Available"
+                    ? "border-green-500/30"
+                    : table.status === "Reserved"
+                      ? "border-red-500/30"
+                      : "border-yellow-500/30"
+                }`}
               >
                 <div className="flex items-center justify-between mb-3">
-                  <span className="text-white font-black text-lg">#{table.tableNumber}</span>
+                  <span className="text-white font-black text-lg">
+                    #{table.tableNumber}
+                  </span>
                   <span
-                    className={`text-[10px] font-black uppercase px-2 py-1 rounded-full ${table.status === "Available"
-                      ? "bg-green-500/20 text-green-500"
-                      : table.status === "Reserved"
-                        ? "bg-red-500/20 text-red-500"
-                        : "bg-yellow-500/20 text-yellow-500"
-                      }`}
+                    className={`text-[10px] font-black uppercase px-2 py-1 rounded-full ${
+                      table.status === "Available"
+                        ? "bg-green-500/20 text-green-500"
+                        : table.status === "Reserved"
+                          ? "bg-red-500/20 text-red-500"
+                          : "bg-yellow-500/20 text-yellow-500"
+                    }`}
                   >
                     {table.status}
                   </span>
                 </div>
 
-                {table.status === "Reserved" && (table.reservedByName || table.reservedByPhone) && (
-                  <div className="mb-3 space-y-1 bg-white/5 p-2 rounded-lg">
-                    {table.reservedByName && (
-                      <div className="flex items-center gap-2 text-xs text-neutral-300">
-                        <User size={10} className="text-orange-500" />
-                        <span className="font-bold truncate">{table.reservedByName}</span>
-                      </div>
-                    )}
-                    {table.reservedByPhone && (
-                      <div className="flex items-center gap-2 text-xs text-neutral-400">
-                        <Phone size={10} className="text-neutral-500" />
-                        <span className="truncate">{table.reservedByPhone}</span>
-                      </div>
-                    )}
-                  </div>
-                )}
+                {table.status === "Reserved" &&
+                  (table.reservedByName || table.reservedByPhone) && (
+                    <div className="mb-3 space-y-1 bg-white/5 p-2 rounded-lg">
+                      {table.reservedByName && (
+                        <div className="flex items-center gap-2 text-xs text-neutral-300">
+                          <User size={10} className="text-orange-500" />
+                          <span className="font-bold truncate">
+                            {table.reservedByName}
+                          </span>
+                        </div>
+                      )}
+                      {table.reservedByPhone && (
+                        <div className="flex items-center gap-2 text-xs text-neutral-400">
+                          <Phone size={10} className="text-neutral-500" />
+                          <span className="truncate">
+                            {table.reservedByPhone}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                 <div className="flex gap-1">
                   {table.status !== "Available" && (
                     <button
-                      onClick={() => updateTableStatus(table.tableNumber, "Available")}
+                      onClick={() =>
+                        updateTableStatus(table.tableNumber, "Available")
+                      }
                       className="flex-1 bg-green-500/10 hover:bg-green-500/20 text-green-500 text-[10px] font-bold py-1.5 rounded-lg transition-colors"
                     >
                       FREE
@@ -534,7 +573,9 @@ export default function KitchenPage() {
                   )}
                   {table.status !== "Occupied" && (
                     <button
-                      onClick={() => updateTableStatus(table.tableNumber, "Occupied")}
+                      onClick={() =>
+                        updateTableStatus(table.tableNumber, "Occupied")
+                      }
                       className="flex-1 bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-500 text-[10px] font-bold py-1.5 rounded-lg transition-colors"
                     >
                       OCCUPIED
@@ -556,12 +597,13 @@ export default function KitchenPage() {
               initial={{ scale: 0.8, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.8, opacity: 0 }}
-              className={`bg-neutral-900 border ${newOrderIds.has(order._id)
-                ? "border-orange-500 shadow-xl shadow-orange-500/10 ring-2 ring-orange-500/30"
-                : order.status === OrderStatus.PENDING
-                  ? "border-orange-500/50 shadow-lg shadow-orange-500/5"
-                  : "border-white/5"
-                } rounded-4xl p-6 flex flex-col h-full overflow-hidden relative`}
+              className={`bg-neutral-900 border ${
+                newOrderIds.has(order._id)
+                  ? "border-orange-500 shadow-xl shadow-orange-500/10 ring-2 ring-orange-500/30"
+                  : order.status === OrderStatus.PENDING
+                    ? "border-orange-500/50 shadow-lg shadow-orange-500/5"
+                    : "border-white/5"
+              } rounded-4xl p-6 flex flex-col h-full overflow-hidden relative`}
             >
               {/* New Order Badge */}
               {newOrderIds.has(order._id) && (
@@ -605,18 +647,19 @@ export default function KitchenPage() {
                 </div>
                 <div className="flex flex-col items-end gap-2">
                   <div
-                    className={`px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest ${order.status === OrderStatus.PENDING
-                      ? "bg-orange-500/20 text-orange-500"
-                      : order.status === OrderStatus.COOKING
-                        ? "bg-yellow-500/20 text-yellow-500"
-                        : order.status === OrderStatus.PLATING
-                          ? "bg-blue-500/20 text-blue-500"
-                          : order.status === OrderStatus.SERVING
-                            ? "bg-purple-500/20 text-purple-500"
-                            : order.status === OrderStatus.CANCELLED
-                              ? "bg-red-500/20 text-red-500"
-                              : "bg-green-500/20 text-green-500"
-                      }`}
+                    className={`px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest ${
+                      order.status === OrderStatus.PENDING
+                        ? "bg-orange-500/20 text-orange-500"
+                        : order.status === OrderStatus.COOKING
+                          ? "bg-yellow-500/20 text-yellow-500"
+                          : order.status === OrderStatus.PLATING
+                            ? "bg-blue-500/20 text-blue-500"
+                            : order.status === OrderStatus.SERVING
+                              ? "bg-purple-500/20 text-purple-500"
+                              : order.status === OrderStatus.CANCELLED
+                                ? "bg-red-500/20 text-red-500"
+                                : "bg-green-500/20 text-green-500"
+                    }`}
                   >
                     {order.status}
                   </div>
@@ -655,7 +698,7 @@ export default function KitchenPage() {
                                 <span className="w-1 h-1 bg-neutral-600 rounded-full" />
                                 <span>{opt.choice}</span>
                               </div>
-                            )
+                            ),
                           )}
                         </div>
                       )}
@@ -670,7 +713,7 @@ export default function KitchenPage() {
                       updateStatus(
                         order._id,
                         order.tableNumber,
-                        OrderStatus.COOKING
+                        OrderStatus.COOKING,
                       )
                     }
                     className="col-span-2 bg-orange-500 hover:bg-orange-600 text-white font-black py-4 rounded-2xl flex items-center justify-center gap-2 transition-all active:scale-95"
@@ -684,7 +727,7 @@ export default function KitchenPage() {
                       updateStatus(
                         order._id,
                         order.tableNumber,
-                        OrderStatus.PLATING
+                        OrderStatus.PLATING,
                       )
                     }
                     className="col-span-2 bg-yellow-500 hover:bg-yellow-600 text-black font-black py-4 rounded-2xl flex items-center justify-center gap-2 transition-all active:scale-95"
@@ -698,7 +741,7 @@ export default function KitchenPage() {
                       updateStatus(
                         order._id,
                         order.tableNumber,
-                        OrderStatus.SERVING
+                        OrderStatus.SERVING,
                       )
                     }
                     className="col-span-2 bg-blue-500 hover:bg-blue-600 text-white font-black py-4 rounded-2xl flex items-center justify-center gap-2 transition-all active:scale-95"
@@ -712,7 +755,7 @@ export default function KitchenPage() {
                       updateStatus(
                         order._id,
                         order.tableNumber,
-                        OrderStatus.COMPLETED
+                        OrderStatus.COMPLETED,
                       )
                     }
                     className="col-span-2 bg-green-500 hover:bg-green-600 text-white font-black py-4 rounded-2xl flex items-center justify-center gap-2 transition-all active:scale-95"
@@ -760,16 +803,25 @@ export default function KitchenPage() {
                   <Table2 className="text-red-500" size={28} />
                 </div>
                 <div>
-                  <h2 className="text-2xl font-black text-white uppercase tracking-tight">Reserve Table #{resTableNumber}</h2>
-                  <p className="text-neutral-500 text-sm font-bold">Counter Booking</p>
+                  <h2 className="text-2xl font-black text-white uppercase tracking-tight">
+                    Reserve Table #{resTableNumber}
+                  </h2>
+                  <p className="text-neutral-500 text-sm font-bold">
+                    Counter Booking
+                  </p>
                 </div>
               </div>
 
               <div className="space-y-6">
                 <div className="space-y-2">
-                  <label className="text-xs font-black text-neutral-500 uppercase tracking-widest ml-1">Guest Name</label>
+                  <label className="text-xs font-black text-neutral-500 uppercase tracking-widest ml-1">
+                    Guest Name
+                  </label>
                   <div className="relative">
-                    <User className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-600" size={18} />
+                    <User
+                      className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-600"
+                      size={18}
+                    />
                     <input
                       type="text"
                       value={guestName}
@@ -781,9 +833,14 @@ export default function KitchenPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-xs font-black text-neutral-500 uppercase tracking-widest ml-1">Phone Number</label>
+                  <label className="text-xs font-black text-neutral-500 uppercase tracking-widest ml-1">
+                    Phone Number
+                  </label>
                   <div className="relative">
-                    <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-600" size={18} />
+                    <Phone
+                      className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-600"
+                      size={18}
+                    />
                     <input
                       type="text"
                       value={guestPhone}

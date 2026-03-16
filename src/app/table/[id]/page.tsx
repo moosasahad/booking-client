@@ -102,7 +102,9 @@ export default function TablePage() {
       if (data.tableNumber === tableId) {
         setTableStatus(data.status);
         if (data.status === "Available") {
-          toast.success("Table is now available! You can browse the menu.", { duration: 4000 });
+          toast.success("Table is now available! You can browse the menu.", {
+            duration: 4000,
+          });
         }
       }
     });
@@ -115,7 +117,9 @@ export default function TablePage() {
 
   const fetchTableStatus = async () => {
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/tables/${tableId}`);
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/tables/${tableId}`,
+      );
       if (res.ok) {
         const data = await res.json();
         setTableStatus(data.status);
@@ -507,10 +511,15 @@ export default function TablePage() {
             Table #{tableId as string}
           </h1>
           <p className="text-neutral-400 text-lg mb-3">
-            This table is currently <span className="text-red-400 font-bold">{tableStatus.toLowerCase()}</span>.
+            This table is currently{" "}
+            <span className="text-red-400 font-bold">
+              {tableStatus.toLowerCase()}
+            </span>
+            .
           </p>
           <p className="text-neutral-500 text-base mb-12">
-            Please call a waiter for assistance or to be seated at another table.
+            Please call a waiter for assistance or to be seated at another
+            table.
           </p>
 
           {/* Call Waiter Button */}
@@ -519,10 +528,11 @@ export default function TablePage() {
             whileTap={{ scale: 0.97 }}
             onClick={callWaiter}
             disabled={waiterCalling}
-            className={`w-full py-5 rounded-2xl font-black text-lg flex items-center justify-center gap-3 transition-all shadow-2xl ${waiterCalling
+            className={`w-full py-5 rounded-2xl font-black text-lg flex items-center justify-center gap-3 transition-all shadow-2xl ${
+              waiterCalling
                 ? "bg-green-500/20 text-green-400 border border-green-500/30 shadow-green-500/10"
                 : "bg-gradient-to-r from-orange-500 to-red-500 text-white shadow-orange-500/30 hover:shadow-orange-500/50"
-              }`}
+            }`}
           >
             {waiterCalling ? (
               <>
@@ -550,7 +560,9 @@ export default function TablePage() {
           {/* Info card */}
           <div className="mt-12 bg-neutral-900/50 border border-white/5 rounded-2xl p-5 text-left">
             <p className="text-neutral-400 text-sm">
-              <span className="text-orange-500 font-bold">💡 Tip:</span> Once the waiter assigns you to an available table, you&apos;ll be able to browse the menu and place orders.
+              <span className="text-orange-500 font-bold">💡 Tip:</span> Once
+              the waiter assigns you to an available table, you&apos;ll be able
+              to browse the menu and place orders.
             </p>
           </div>
         </motion.div>
@@ -602,10 +614,11 @@ export default function TablePage() {
           <button
             key={cat}
             onClick={() => setActiveCategory(cat)}
-            className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${activeCategory === cat
+            className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
+              activeCategory === cat
                 ? "bg-orange-500 text-white shadow-lg shadow-orange-500/20"
                 : "bg-neutral-900 text-neutral-400 hover:bg-neutral-800"
-              }`}
+            }`}
           >
             {cat}
           </button>
@@ -714,10 +727,11 @@ export default function TablePage() {
                             onClick={() =>
                               handleOptionSelect(option.name, choice)
                             }
-                            className={`p-3 rounded-xl border flex justify-between items-center cursor-pointer transition-all ${isSelected
+                            className={`p-3 rounded-xl border flex justify-between items-center cursor-pointer transition-all ${
+                              isSelected
                                 ? "bg-orange-500/20 border-orange-500 text-orange-500"
                                 : "bg-neutral-800 border-transparent hover:bg-neutral-800/80"
-                              }`}
+                            }`}
                           >
                             <div className="flex items-center gap-3">
                               <div
@@ -958,14 +972,15 @@ export default function TablePage() {
                   </div>
                   <div className="flex items-center gap-2">
                     <span
-                      className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${recentOrder.status === "Pending"
+                      className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${
+                        recentOrder.status === "Pending"
                           ? "bg-orange-500/20 text-orange-500"
                           : recentOrder.status === "Cooking"
                             ? "bg-yellow-500/20 text-yellow-500"
                             : recentOrder.status === "Cancelled"
                               ? "bg-red-500/20 text-red-500"
                               : "bg-green-500/20 text-green-500"
-                        }`}
+                      }`}
                     >
                       {recentOrder.status}
                     </span>
@@ -1078,15 +1093,15 @@ export default function TablePage() {
                 {(recentOrder.status === "Cooking" ||
                   recentOrder.status === "Plating" ||
                   recentOrder.status === "Serving") && (
-                    <div className="bg-yellow-500/10 border border-yellow-500/20 p-4 rounded-xl text-center">
-                      <p className="text-yellow-500 font-bold text-sm">
-                        Your order is being prepared ✨
-                      </p>
-                      <p className="text-yellow-500/60 text-xs mt-1">
-                        Cannot modify order once cooking has started
-                      </p>
-                    </div>
-                  )}
+                  <div className="bg-yellow-500/10 border border-yellow-500/20 p-4 rounded-xl text-center">
+                    <p className="text-yellow-500 font-bold text-sm">
+                      Your order is being prepared ✨
+                    </p>
+                    <p className="text-yellow-500/60 text-xs mt-1">
+                      Cannot modify order once cooking has started
+                    </p>
+                  </div>
+                )}
 
                 {recentOrder.status === "Completed" && (
                   <div className="bg-green-500/10 border border-green-500/20 p-4 rounded-xl text-center">
@@ -1148,19 +1163,21 @@ export default function TablePage() {
                 <div className="flex gap-2 mb-6 bg-neutral-800 rounded-xl p-1">
                   <button
                     onClick={() => setPaymentTab("qr")}
-                    className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-all ${paymentTab === "qr"
+                    className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-all ${
+                      paymentTab === "qr"
                         ? "bg-orange-500 text-white"
                         : "text-neutral-400"
-                      }`}
+                    }`}
                   >
                     <QrCode size={16} /> UPI / QR
                   </button>
                   <button
                     onClick={() => setPaymentTab("card")}
-                    className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-all ${paymentTab === "card"
+                    className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-all ${
+                      paymentTab === "card"
                         ? "bg-orange-500 text-white"
                         : "text-neutral-400"
-                      }`}
+                    }`}
                   >
                     <CreditCard size={16} /> Card
                   </button>
@@ -1328,26 +1345,26 @@ export default function TablePage() {
       </AnimatePresence>
 
       {/* Floating Call Waiter Button */}
-      {!isCartOpen && !isPaymentOpen && !isOptionsOpen && !isOrderDetailOpen && (
-        <motion.button
-          initial={{ opacity: 0, scale: 0 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.5 }}
-          onClick={callWaiter}
-          disabled={waiterCalling}
-          className={`fixed bottom-6 right-6 z-40 p-4 rounded-full shadow-2xl transition-all ${waiterCalling
-              ? "bg-green-500 shadow-green-500/40 text-white"
-              : "bg-red-500 hover:bg-red-600 shadow-red-500/40 text-white hover:scale-110"
+      {!isCartOpen &&
+        !isPaymentOpen &&
+        !isOptionsOpen &&
+        !isOrderDetailOpen && (
+          <motion.button
+            initial={{ opacity: 0, scale: 0 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.5 }}
+            onClick={callWaiter}
+            disabled={waiterCalling}
+            className={`fixed bottom-6 right-6 z-40 p-4 rounded-full shadow-2xl transition-all ${
+              waiterCalling
+                ? "bg-green-500 shadow-green-500/40 text-white"
+                : "bg-red-500 hover:bg-red-600 shadow-red-500/40 text-white hover:scale-110"
             }`}
-          title="Call Waiter"
-        >
-          {waiterCalling ? (
-            <CheckCircle size={24} />
-          ) : (
-            <Bell size={24} />
-          )}
-        </motion.button>
-      )}
+            title="Call Waiter"
+          >
+            {waiterCalling ? <CheckCircle size={24} /> : <Bell size={24} />}
+          </motion.button>
+        )}
     </div>
   );
 }

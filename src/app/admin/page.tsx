@@ -27,7 +27,10 @@ export default function AdminPage() {
   const [activeTab, setActiveTab] = useState("menu"); // menu, orders, tables
   const [menu, setMenu] = useState<any[]>([]);
   const [orders, setOrders] = useState<any[]>([]);
+  const [tables, setTables] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [newTableName, setNewTableName] = useState("");
+  const [isTableModalOpen, setIsTableModalOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<any>(null);
   const [qrModal, setQrModal] = useState<{
@@ -123,12 +126,14 @@ export default function AdminPage() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [menuRes, orderRes] = await Promise.all([
+      const [menuRes, orderRes, tableRes] = await Promise.all([
         fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/menu`),
         fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/orders`),
+        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/tables`),
       ]);
       setMenu(await menuRes.json());
       setOrders(await orderRes.json());
+      setTables(await tableRes.json());
     } catch (error) {
       toast.error("Error fetching data");
     } finally {
@@ -209,6 +214,30 @@ export default function AdminPage() {
       setQrModal({ isOpen: true, tableId, qrData });
     } catch (err) {
       toast.error("Could not generate QR code");
+    }
+  };
+
+  const handleSaveTable = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newTableName) return;
+
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/tables`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tableNumber: newTableName, status: "Available" }),
+      });
+      if (res.ok) {
+        toast.success(`Table ${newTableName} added`);
+        setNewTableName("");
+        setIsTableModalOpen(false);
+        fetchData();
+      } else {
+        const err = await res.json();
+        toast.error(err.error || "Failed to add table");
+      }
+    } catch (err) {
+      toast.error("Network error");
     }
   };
 
@@ -307,6 +336,14 @@ export default function AdminPage() {
                 : "Table Station"}
           </h2>
           <div className="flex gap-4">
+            {activeTab === "tables" && (
+                <button 
+                  onClick={() => setIsTableModalOpen(true)}
+                  className="bg-orange-600 px-6 py-3 rounded-2xl text-white font-bold flex items-center gap-2 hover:bg-orange-500 transition-all shadow-lg"
+                >
+                    <Plus size={20} /> Add Table
+                </button>
+            )}
             {activeTab === "menu" && (
               <button
                 onClick={() => {
@@ -476,34 +513,90 @@ export default function AdminPage() {
             </table>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-3 p-8 gap-6">
-              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((tabId) => (
-                <div
-                  key={tabId}
-                  className="bg-neutral-950 border border-white/5 p-8 rounded-4xl flex flex-col items-center text-center"
-                >
-                  <div className="w-16 h-16 bg-neutral-900 rounded-3xl flex items-center justify-center text-2xl font-black text-orange-500 mb-4">
-                    {tabId}
-                  </div>
-                  <h3 className="font-black text-xl mb-1 text-white">
-                    Table {tabId}
-                  </h3>
-                  <p className="text-neutral-500 text-sm mb-6">
-                    Active Ordering Station
-                  </p>
-                  <button
-                    onClick={() => generateQR(tabId.toString())}
-                    className="w-full bg-neutral-900 hover:bg-orange-500 text-white font-black py-4 rounded-2xl transition-all flex items-center justify-center gap-2 group"
+              {tables.length > 0 ? (
+                tables.map((table) => (
+                  <div
+                    key={table._id}
+                    className="bg-neutral-950 border border-white/5 p-8 rounded-4xl flex flex-col items-center text-center"
                   >
-                    <QrCode
-                      size={18}
-                      className="group-hover:rotate-12 transition-transform"
-                    />{" "}
-                    VIEW QR CODE
-                  </button>
+                    <div className="w-16 h-16 bg-neutral-900 rounded-3xl flex items-center justify-center text-2xl font-black text-orange-500 mb-4">
+                      {table.tableNumber}
+                    </div>
+                    <h3 className="font-black text-xl mb-1 text-white">
+                      Table {table.tableNumber}
+                    </h3>
+                    <p className="text-neutral-500 text-sm mb-6 uppercase tracking-widest">
+                      {table.status || "Active Station"}
+                    </p>
+                    <button
+                      onClick={() => generateQR(table.tableNumber.toString())}
+                      className="w-full bg-neutral-900 hover:bg-orange-500 text-white font-black py-4 rounded-2xl transition-all flex items-center justify-center gap-2 group"
+                    >
+                      <QrCode
+                        size={18}
+                        className="group-hover:rotate-12 transition-transform"
+                      />{" "}
+                      VIEW QR CODE
+                    </button>
+                  </div>
+                ))
+              ) : (
+                <div className="col-span-full py-20 text-center">
+                    <p className="text-neutral-500 font-bold mb-4 uppercase tracking-widest">No tables found</p>
+                    <button 
+                         onClick={() => setIsTableModalOpen(true)}
+                         className="text-orange-500 font-black underline"
+                    >
+                        Create your first table
+                    </button>
                 </div>
-              ))}
+              )}
             </div>
           )}
+
+          {/* Table Modal */}
+          <AnimatePresence>
+            {isTableModalOpen && (
+              <div className="fixed inset-0 z-[60] flex items-center justify-center p-6">
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  onClick={() => setIsTableModalOpen(false)}
+                  className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+                />
+                <motion.div
+                  initial={{ scale: 0.9, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ scale: 0.9, opacity: 0 }}
+                  className="relative bg-neutral-950 border border-white/10 w-full max-w-md rounded-[2.5rem] overflow-hidden"
+                >
+                  <div className="p-10">
+                    <h3 className="text-3xl font-black mb-8 uppercase tracking-tighter text-white">Add New Table</h3>
+                    <form onSubmit={handleSaveTable} className="space-y-6">
+                        <div className="space-y-2">
+                            <label className="text-xs font-black uppercase tracking-widest text-neutral-500">Table Number / Name</label>
+                            <input 
+                                value={newTableName}
+                                onChange={(e) => setNewTableName(e.target.value)}
+                                className="w-full bg-neutral-900 border border-white/5 rounded-2xl px-6 py-4 outline-none focus:border-orange-500 text-white transition-colors"
+                                placeholder="e.g. 15 or VIP-1"
+                                required
+                                autoFocus
+                            />
+                        </div>
+                        <button 
+                            type="submit"
+                            className="w-full bg-orange-600 py-4 rounded-2xl text-white font-bold hover:bg-orange-500 transition-all shadow-lg"
+                        >
+                            Confirm Table
+                        </button>
+                    </form>
+                  </div>
+                </motion.div>
+              </div>
+            )}
+          </AnimatePresence>
         </div>
       </main>
 
